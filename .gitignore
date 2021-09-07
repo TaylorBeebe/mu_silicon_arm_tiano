@@ -33,6 +33,7 @@ BuildConfig.conf
 /NetworkPkg/
 /OvmfPkg/
 /PcAtChipsetPkg/
+/PrmPkg/
 /RedfishPkg/
 /SecurityPkg/
 /ShellPkg/
