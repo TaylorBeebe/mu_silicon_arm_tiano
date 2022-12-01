@@ -690,6 +690,241 @@ FreeTranslationTable:
   return Status;
 }
 
+#define ARM_MAP_ATTRIBUTE_PAGE_TABLE_BASE_ADDRESS(pa)  ((pa)->Uint64 & TT_ADDRESS_MASK_BLOCK_ENTRY)
+#define ARM_MAP_ATTRIBUTE_ATTRIBUTES(pa)               ((pa)->Uint64 & TT_ATTRIBUTES_MASK)
+
+typedef TRANSLATION_TABLE_ATTRIBUTE TRANSLATION_TABLE_ENTRY_BLOCK;
+
+typedef union {
+  struct {
+    UINT64    Valid           : 1;
+    UINT64    BlockOrTable    : 1;
+    UINT64    LowerAttributes : 10;
+    UINT64    Address         : 39;
+    UINT64    UpperAttributes : 13;
+  } Bits;
+  UINT64    Uint64;
+} TRANSLATION_TABLE_ENTRY_COMMON;
+
+typedef union {
+  struct {
+    UINT64    Valid           : 1;
+    UINT64    BlockOrTable    : 1;
+    UINT64    LowerAttributes : 10;
+    UINT64    LevelZeroIndex  : 9;
+    UINT64    LevelOneIndex   : 9;
+    UINT64    LevelTwoIndex   : 9;
+    UINT64    LevelThreeIndex : 9;
+    UINT64    Reserved        : 3;
+    UINT64    UpperAttributes : 13;
+  } Bits;
+  UINT64    Uint64;
+} TRANSLATION_TABLE_ENTRY_TABLE;
+
+typedef union {
+  TRANSLATION_TABLE_ENTRY_BLOCK     Tteb;
+  TRANSLATION_TABLE_ENTRY_TABLE     Ttet;
+  TRANSLATION_TABLE_ENTRY_COMMON    Ttec;
+  UINT64                            Uint64;
+} TRANSLATION_TABLE_ENTRY_UNION;
+
+/**
+  Recursively parse the non-leaf page table entries.
+
+  @param[in]      PageTableBaseAddress The base address of the 512 page table entries in the specified level
+  @param[in]      Level                Page level (0, 1, 2, 3)
+  @param[in]      RegionStart          The base linear address of the region covered by the page table entries
+  @param[in]      ParentMapAttribute   The mapping attribute of the parent entries.
+  @param[in, out] Map                  Pointer to an array that describes multiple linear address ranges.
+  @param[in, out] MapCount             Pointer to a UINTN that hold the actual number of entries in the Map.
+  @param[in]      MapCapacity          The maximum number of entries the Map can hold.
+  @param[in]      LastEntry            Pointer to last map entry.
+  @param[in]      OneEntry             Pointer to a library internal storage that holds one map entry which is
+                                       used when Map array is at capacity.
+**/
+VOID
+TranslationTableParseRecursive (
+  IN     UINT64                       PageTableBaseAddress,
+  IN     UINTN                        Level,
+  IN     UINT64                       RegionStart,
+  IN     TRANSLATION_TABLE_ATTRIBUTE  *ParentMapAttribute,
+  IN OUT TRANSLATION_TABLE_ENTRY      *Map,
+  IN OUT UINTN                        *MapCount,
+  IN     UINTN                        MapCapacity,
+  IN     TRANSLATION_TABLE_ENTRY      **LastEntry,
+  IN     TRANSLATION_TABLE_ENTRY      *OneEntry
+  )
+{
+  TRANSLATION_TABLE_ENTRY_UNION  *PagingEntry;
+  UINTN                          Index;
+  TRANSLATION_TABLE_ATTRIBUTE    MapAttribute;
+  UINT64                         RegionLength;
+
+  ASSERT (OneEntry != NULL);
+
+  PagingEntry  = (TRANSLATION_TABLE_ENTRY_UNION *)(UINTN)PageTableBaseAddress;
+  RegionLength = TT_BLOCK_ENTRY_SIZE_AT_LEVEL (Level);
+
+  for (Index = 0; Index < TT_ENTRY_COUNT; Index++, RegionStart += RegionLength) {
+    // DEBUG ((
+    //     DEBUG_INFO,
+    //     "%a - Level: %d. Region Start: 0x%llx\n",
+    //     __FUNCTION__,
+    //     Level,
+    //     RegionStart
+    //     ));
+
+    // Skip unmapped entries
+    if (PagingEntry[Index].Ttec.Bits.Valid == 0) {
+      // DEBUG ((
+      //   DEBUG_INFO,
+      //   "%a - Level: %d. Skipping Entry 0x%llx - 0x%llx\n",
+      //   __FUNCTION__,
+      //   Level,
+      //   RegionStart,
+      //   RegionStart + RegionLength
+      //   ));
+      continue;
+    }
+
+    if (IsBlockEntry (PagingEntry[Index].Uint64, Level)) {
+      // BEEBE TODO: Should we check the feature register to see if blocks are allowed at level 1?
+      //
+      // Blocks can only be present after level 0.
+      ASSERT (Level == 1 || Level == 2 || Level == 3);
+
+      MapAttribute.Uint64 = PagingEntry[Index].Tteb.Uint64;
+  
+      // BEEBE TODO: Putting this here so we can take into account heirarchical access in the future.
+      //             According to the manual, heirarchical access is in effect if FEAT_HPDS or FEAT_HPDS1
+      //             are active (depending on the translation stage and execution level). See D5-4854.
+      // if (Level == 1) {
+      //   MapAttribute.Uint64 = PageTableLibGetPte4KMapAttribute (&PagingEntry[Index].Pte4K, ParentMapAttribute);
+      // } else {
+      //   MapAttribute.Uint64 = PageTableLibGetPleBMapAttribute (&PagingEntry[Index].PleB, ParentMapAttribute);
+      // }
+
+      if ((*LastEntry != NULL) &&
+          ((*LastEntry)->LinearAddress + (*LastEntry)->Length == RegionStart) &&
+          (ARM_MAP_ATTRIBUTE_PAGE_TABLE_BASE_ADDRESS (&(*LastEntry)->Attribute) + (*LastEntry)->Length
+           == ARM_MAP_ATTRIBUTE_PAGE_TABLE_BASE_ADDRESS (&MapAttribute)) &&
+          (ARM_MAP_ATTRIBUTE_ATTRIBUTES (&(*LastEntry)->Attribute) == ARM_MAP_ATTRIBUTE_ATTRIBUTES (&MapAttribute))
+          )
+      {
+        //
+        // Extend LastEntry.
+        //
+        (*LastEntry)->Length += RegionLength;
+        // DEBUG ((
+        //   DEBUG_INFO,
+        //   "%a - Level: %d. UPDATED Last Entry 0x%llx - 0x%llx\n",
+        //   __FUNCTION__,
+        //   Level,
+        //   (*LastEntry)->LinearAddress,
+        //   (*LastEntry)->LinearAddress + (*LastEntry)->Length
+        //   ));
+      } else {
+        if (*MapCount < MapCapacity) {
+          //
+          // LastEntry points to next map entry in the array.
+          //
+          *LastEntry = &Map[*MapCount];
+        } else {
+          //
+          // LastEntry points to library internal map entry.
+          //
+          *LastEntry = OneEntry;
+        }
+
+        //
+        // Set LastEntry.
+        //
+        (*LastEntry)->LinearAddress = RegionStart;
+        (*LastEntry)->Length        = RegionLength;
+        // BEEBE TODO: Can we poll VTTBR0_EL2 to see if stage 2 translation is present and should be accounted
+        //             for when recording what the effective attributes are for this region?
+        (*LastEntry)->Attribute.Uint64 = MapAttribute.Uint64;
+        (*MapCount)++;
+        // DEBUG ((
+        //   DEBUG_INFO,
+        //   "%a - Level: %d. Last Entry 0x%llx - 0x%llx\n",
+        //   __FUNCTION__,
+        //   Level,
+        //   (*LastEntry)->LinearAddress,
+        //   (*LastEntry)->LinearAddress + (*LastEntry)->Length
+        //   ));
+      }
+    } else {
+      MapAttribute.Uint64 = PagingEntry[Index].Ttet.Uint64;
+      TranslationTableParseRecursive (
+        ARM_MAP_ATTRIBUTE_PAGE_TABLE_BASE_ADDRESS (&PagingEntry[Index].Ttet),
+        Level + 1,
+        RegionStart,
+        &MapAttribute,
+        Map,
+        MapCount,
+        MapCapacity,
+        LastEntry,
+        OneEntry
+        );
+    }
+  }
+}
+
+/**
+  BEEBE TODO
+**/
+EFI_STATUS
+EFIAPI
+TranslationTableParse (
+  IN     TRANSLATION_TABLE_ENTRY  *Map,
+  IN OUT UINTN                    *MapCount
+  )
+{
+  UINTN                        MapCapacity;
+  TRANSLATION_TABLE_ATTRIBUTE  NopAttribute;
+  TRANSLATION_TABLE_ENTRY      *LastEntry;
+  TRANSLATION_TABLE_ENTRY      OneEntry;
+  UINTN                        T0SZ;
+
+  if (MapCount == NULL) {
+    return RETURN_INVALID_PARAMETER;
+  }
+
+  T0SZ = ArmGetTCR () & TCR_T0SZ_MASK;
+
+  if ((*MapCount != 0) && (Map == NULL)) {
+    return RETURN_INVALID_PARAMETER;
+  }
+
+  NopAttribute.Uint64     = 0;
+  NopAttribute.Bits.Valid = 1;
+
+  MapCapacity = *MapCount;
+  *MapCount   = 0;
+  LastEntry   = NULL;
+
+  // BEEBE TODO: Should we pass in the max page table level to ensure we don't hit a translation fault if the
+  //             translation table is poorly constructed?
+  TranslationTableParseRecursive (
+    (UINTN)ArmGetTTBR0BaseAddress (),
+    GetRootTableLevel (T0SZ), // Should be 0. Does -1 violate UEFI spec?
+    0,
+    &NopAttribute,
+    Map,
+    MapCount,
+    MapCapacity,
+    &LastEntry,
+    &OneEntry
+    );
+
+  if (*MapCount > MapCapacity) {
+    return RETURN_BUFFER_TOO_SMALL;
+  }
+
+  return RETURN_SUCCESS;
+}
+
 RETURN_STATUS
 EFIAPI
 ArmMmuBaseLibConstructor (
