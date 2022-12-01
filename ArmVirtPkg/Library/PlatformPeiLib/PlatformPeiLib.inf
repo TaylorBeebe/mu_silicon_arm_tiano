@@ -24,7 +24,8 @@
   EmbeddedPkg/EmbeddedPkg.dec
   MdeModulePkg/MdeModulePkg.dec
   MdePkg/MdePkg.dec
-  OvmfPkg/OvmfPkg.dec
+  QemuQ35Pkg/QemuQ35Pkg.dec
+  QemuCortexPkg/QemuCortex.dec
   SecurityPkg/SecurityPkg.dec
 
 [FeaturePcd]

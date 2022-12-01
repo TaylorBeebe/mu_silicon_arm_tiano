@@ -50,6 +50,7 @@
   PeCoffGetEntryPointLib
   UefiDriverEntryPoint
   UefiLib
+  MemoryAllocationLib
 
 [Protocols]
   gEfiCpuArchProtocolGuid

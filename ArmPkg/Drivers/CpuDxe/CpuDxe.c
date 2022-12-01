@@ -10,7 +10,7 @@
 #include "CpuDxe.h"
 
 #include <Guid/IdleLoopEvent.h>
-
+#include <Library/MemoryAllocationLib.h>
 BOOLEAN  mIsFlushingGCD;
 
 /**
@@ -236,6 +236,11 @@ CpuDxeInitialize (
   EFI_STATUS  Status;
   EFI_EVENT   IdleLoopEvent;
 
+  TRANSLATION_TABLE_ENTRY  *Map            = NULL;
+  UINTN                    MapCount        = 0;
+  UINTN                    PagesAllocated  = 0;
+  UINTN                    CurrentMapIndex = 0;
+
   InitializeExceptions (&mCpu);
 
   InitializeDma (&mCpu);
@@ -268,6 +273,27 @@ CpuDxeInitialize (
                   &IdleLoopEvent
                   );
   ASSERT_EFI_ERROR (Status);
+  Status = TranslationTableParse (NULL, &MapCount);
+  while (Status == RETURN_BUFFER_TOO_SMALL) {
+    if ((Map != NULL) && (PagesAllocated > 0)) {
+      FreePages (Map, PagesAllocated);
+    }
+
+    PagesAllocated = EFI_SIZE_TO_PAGES (MapCount * sizeof (TRANSLATION_TABLE_ENTRY));
+    Map            = AllocatePages (PagesAllocated);
+    Status         = TranslationTableParse (Map, &MapCount);
+  }
+
+  while (CurrentMapIndex < MapCount) {
+    DEBUG ((
+      DEBUG_INFO,
+      "%a - Table Entry 0x%llx - 0x%llx\n",
+      __FUNCTION__,
+      Map[CurrentMapIndex].LinearAddress,
+      Map[CurrentMapIndex].LinearAddress + Map[CurrentMapIndex].Length
+      ));
+    CurrentMapIndex++;
+  }
 
   return Status;
 }

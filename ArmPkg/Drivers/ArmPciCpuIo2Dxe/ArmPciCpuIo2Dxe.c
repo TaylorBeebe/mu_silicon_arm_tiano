@@ -232,6 +232,7 @@ CpuMemoryServiceRead (
   UINT8                      OutStride;
   EFI_CPU_IO_PROTOCOL_WIDTH  OperationWidth;
   UINT8                      *Uint8Buffer;
+  DEBUG ((DEBUG_INFO, "%a\n", __FUNCTION__));
 
   Status = CpuIoCheckParameter (TRUE, Width, Address, Count, Buffer);
   if (EFI_ERROR (Status)) {
@@ -396,7 +397,7 @@ CpuIoServiceRead (
   UINT8                      OutStride;
   EFI_CPU_IO_PROTOCOL_WIDTH  OperationWidth;
   UINT8                      *Uint8Buffer;
-
+DEBUG ((DEBUG_INFO, "%a\n", __FUNCTION__));
   Status = CpuIoCheckParameter (FALSE, Width, Address, Count, Buffer);
   if (EFI_ERROR (Status)) {
     return Status;
@@ -479,7 +480,7 @@ CpuIoServiceWrite (
   UINT8                      OutStride;
   EFI_CPU_IO_PROTOCOL_WIDTH  OperationWidth;
   UINT8                      *Uint8Buffer;
-
+DEBUG ((DEBUG_INFO, "%a\n", __FUNCTION__));
   //
   // Make sure the parameters are valid
   //
