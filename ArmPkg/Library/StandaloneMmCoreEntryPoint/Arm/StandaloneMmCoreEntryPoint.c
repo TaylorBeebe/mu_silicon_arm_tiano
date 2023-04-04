@@ -125,7 +125,8 @@ DelegatedEventLoop (
 {
   BOOLEAN     FfaEnabled;
   EFI_STATUS  Status;
-  UINTN       SvcStatus;
+  // UINTN       SvcStatus;
+  INTN SvcStatus;
 
   while (TRUE) {
     ArmCallSvc (EventCompleteSvcArgs);
@@ -218,11 +219,11 @@ GetSpmVersion (
   )
 {
   EFI_STATUS    Status;
-  UINT16        CalleeSpmMajorVer;
-  UINT16        CallerSpmMajorVer;
-  UINT16        CalleeSpmMinorVer;
-  UINT16        CallerSpmMinorVer;
-  UINT32        SpmVersion;
+  UINTN         CalleeSpmMajorVer;
+  UINTN         CallerSpmMajorVer;
+  UINTN         CalleeSpmMinorVer;
+  UINTN         CallerSpmMinorVer;
+  UINTN         SpmVersion;
   ARM_SVC_ARGS  SpmVersionArgs;
 
   if (FeaturePcdGet (PcdFfaEnable)) {

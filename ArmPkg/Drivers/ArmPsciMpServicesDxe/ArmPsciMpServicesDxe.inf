@@ -18,7 +18,8 @@
 
 [Sources.Common]
   ArmPsciMpServicesDxe.c
-  MpFuncs.S
+  MpFuncs.S | GCC
+  MpFuncs.S | MSFT
   MpServicesInternal.h
 
 [Packages]

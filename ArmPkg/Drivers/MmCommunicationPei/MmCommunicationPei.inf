@@ -39,3 +39,6 @@
 
 [Depex]
   TRUE
+
+# [BuildOptions]
+#   MSFT:*_*_*_DLINK_FLAGS = /ALIGN:4096

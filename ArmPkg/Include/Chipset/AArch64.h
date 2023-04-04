@@ -134,18 +134,18 @@
 
 #else
 
-#define VECTOR_BASE(tbl)          \
-    AREA    |.text|,ALIGN=11,CODE,READONLY  __CR__\
-    EXPORT  tbl                             __CR__\
-## tbl PROC                                 __CR__
+#define VECTOR_BASE(tbl)                    \
+  AREA    |.text|,ALIGN=11,CODE,READONLY  ; \
+  EXPORT  tbl                             ; \
+tbl PROC                                  ;
 
 #define VECTOR_ENTRY(tbl, off)    \
-    ALIGN   128             __CR__\
+  ALIGN   128                    ;\
 
 #define VECTOR_END(tbl)                     \
-tbl ENDP                                    __CR__\
-    ALIGN   0x800                           __CR__\
-    AREA    |.text|,ALIGN=3,CODE,READONLY   __CR__
+tbl ENDP                                  ; \
+  ALIGN   0x800                           ; \
+  AREA    |.text|,ALIGN=3,CODE,READONLY   ;
 
 #endif
 

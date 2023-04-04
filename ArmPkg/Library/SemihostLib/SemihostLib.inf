@@ -31,7 +31,8 @@
   Arm/GccSemihost.S | GCC
 
 [Sources.AARCH64]
-  AArch64/GccSemihost.S
+  AArch64/GccSemihost.S | GCC
+  AArch64/GccSemihost.asm | MSFT
 
 [Packages]
   MdePkg/MdePkg.dec

@@ -23,6 +23,7 @@
   NorFlash.c
   NorFlashStandaloneMm.c
   NorFlashFvb.c
+  NullFvpVirutalNotifyEvent.c
 
 [Packages]
   MdePkg/MdePkg.dec

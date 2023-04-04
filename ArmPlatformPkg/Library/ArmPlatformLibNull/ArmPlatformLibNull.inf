@@ -31,7 +31,8 @@
   Arm/ArmPlatformHelper.S    | GCC
 
 [Sources.AArch64]
-  AArch64/ArmPlatformHelper.S
+  AArch64/ArmPlatformHelper.S | GCC
+  AArch64/ArmPlatformHelper.asm | MSFT
 
 [FixedPcd]
   gArmTokenSpaceGuid.PcdArmPrimaryCoreMask

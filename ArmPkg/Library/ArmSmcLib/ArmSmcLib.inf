@@ -17,8 +17,8 @@
   Arm/ArmSmc.S      | GCC
 
 [Sources.AARCH64]
-  AArch64/ArmSmc.S
-  AArch64/ArmSmc.masm | MSFT
+  AArch64/ArmSmc.S | GCC
+  AArch64/ArmSmc.asm | MSFT
 
 [Sources]
   ArmSmc.c
@@ -26,3 +26,6 @@
 [Packages]
   MdePkg/MdePkg.dec
   ArmPkg/ArmPkg.dec
+
+# [BuildOptions]
+#   MSFT:*_*_*_DLINK_FLAGS = /ALIGN:64

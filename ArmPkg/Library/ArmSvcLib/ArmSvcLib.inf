@@ -17,7 +17,8 @@
   Arm/ArmSvc.S      | GCC
 
 [Sources.AARCH64]
-  AArch64/ArmSvc.S
+  AArch64/ArmSvc.S      | GCC
+  AArch64/ArmSvc.asm    | MSFT
 
 [Packages]
   ArmPkg/ArmPkg.dec

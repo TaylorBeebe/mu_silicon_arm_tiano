@@ -1,7 +1,7 @@
 
-    AREA    |.text|,ALIGN=8,CODE,READONLY
-
     EXPORT ArmCallSmc
+    AREA    |.text|,CODE,READONLY
+
 
 ArmCallSmc PROC
   // Push x0 on the stack - The stack must always be quad-word aligned

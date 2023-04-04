@@ -31,15 +31,17 @@
         cbnz   SAFE_XREG, 1f        ;\
         b      .                    ;// We should never get here
 #else
-#define EL1_OR_EL2(SAFE_XREG)        \
-        mrs    SAFE_XREG, CurrentEL __CR__\
-        cmp    SAFE_XREG, NUM(0x8)  __CR__\
-6
-bgt    %b6                  __CR__ \
-  beq    %f2                  __CR__ \
-  cbnz   SAFE_XREG, NUM (0x4)  __CR__ \
-  5                                   __CR__ \
-  bne    %b5                       // We should never get here
+#define EL1_OR_EL2(SAFE_XREG)         \
+        mrs    SAFE_XREG, CurrentEL ; \
+        cmp    SAFE_XREG, NUM(0x8)  ; \
+        6:;                           \
+        nop;                          \
+        bgt    %B6 ;                  \
+        beq    %f2 ;                  \
+        cbnz   SAFE_XREG, NUM (0x4) ; \
+        5;                            \
+        nop;                          \
+        bne    %B5                       // We should never get here
 #endif
 // EL1 code starts here
 // CurrentEL : 0xC = EL3; 8 = EL2; 4 = EL1
@@ -122,5 +124,11 @@ bgt    %b6                  __CR__ \
   movk      Reg, (Val) & 0xffff
 
 #endif
+
+#define MOV64(Reg, Val) \
+  MOV    Reg, Val
+
+#define MOV32(Reg, Val) \
+  MOV    Reg, Val
 
 #endif // ASM_MACRO_IO_LIBV8_H_
